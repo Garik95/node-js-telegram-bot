@@ -34,6 +34,7 @@ bot.on('edit', (msg) => {
     return msg.reply.text('I saw it! You edited message!', { asReply: true });
 });
 
+// an example how to fetch and display data from DB!
 //bot.on('text', (msg) => {
 //	
 //	function extract(err,result,msg){
