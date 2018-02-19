@@ -1,4 +1,4 @@
-// const
+// constants
 
 const TeleBot = require('telebot');
 const mysql = require('mysql');
@@ -60,32 +60,38 @@ function isNewUser(msg)
 	});
 }
 
-// bot main functionality
+// end of "isNewUser" function
 
-bot.on('/new',(msg) => {
-	isNewUser(msg);
-});
-
-
-bot.on('edit', (msg) => {
-    return msg.reply.text('I saw it! You edited message!', { asReply: true });
-});
-
-// an example how to fetch and display data from DB!
-//bot.on('text', (msg) => {
-//	
-//	function extract(err,result,msg){
-//		msg.reply.text(result)
-//	}
+// function "commandList" creates array of arrays with all possible commands in it fetched from database
+//function commandList(callback)
+//{
+//		let sql  = 'SELECT distinct(name) as name,category,product_name FROM sp_menu where name IS NOT NULL UNION SELECT distinct(command) as command ,category,product_name FROM sp_menu where command IS NOT NULL';
+//		var comm = [];
+//		con.query(sql, function (err, result, fields) {
+//			for(var i = 0,len = result.length;i<len;i++)
+//				{
+//					com_row = [result[i].name,result[i].category,result[i].product_name];
+//					comm.push(com_row);
+//				}
+//				callback(comm);
+//		});
+//}
 //
-//	fetchdata(extract,msg);
+//function Main(comm)
+//{
+//	for(var i=0,len = comm.length;i<len;i++)
+//		{
+//			console.log(comm[i][0]);
+//		}
+//	//console.log(comm);
+//}
 //
-//	});
+//commandList(Main);
 
 
-
-bot.on([/^\/start$/, /^\/back$/], msg => {
-
+//function "onStart"
+function onStart(msg)
+{
 	var txt = "Привет " + msg.from.first_name + JSON.stringify('\ud83d\udc4b') + "! Добро пожаловать в мир здоровой еды и питания от Novatio. Я бот компаньон, я помогу тебе дать подробную информацию о продукции Novatio.";
 	
 	var sql = "update sp_users set cat=NULL,sub_cat=NULL where userid="+msg.from.id;
@@ -113,7 +119,35 @@ bot.on([/^\/start$/, /^\/back$/], msg => {
 		return bot.sendMessage(msg.from.id, txt, {replyMarkup});
 	}
 	replyMarkup = fetchMenuButtons(buildReplyMarkup);
+}
+// end of "onStart" function
 
+// bot main functionality
+
+bot.on('/new',(msg) => {
+	isNewUser(msg);
+});
+
+
+bot.on('edit', (msg) => {
+    return msg.reply.text('I saw it! You edited message!', { asReply: true });
+});
+
+// an example how to fetch and display data from DB!
+//bot.on('text', (msg) => {
+//	
+//	function extract(err,result,msg){
+//		msg.reply.text(result)
+//	}
+//
+//	fetchdata(extract,msg);
+//
+//	});
+
+
+
+bot.on([/^\/start$/, /^\/back$/], msg => {
+	onStart(msg);
 });
 
 //bot.on('text', (msg) => 
