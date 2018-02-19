@@ -2,7 +2,9 @@
 
 const TeleBot = require('telebot');
 const mysql = require('mysql');
-const emoji = require('node-emoji')
+const emoji = require('node-emoji');
+const emojiStrip = require('emoji-strip');
+//const regex = emojiStrip();
 
 //create connection
 
@@ -45,11 +47,7 @@ function isNewUser(msg)
 {
 	let sql = "Select userid from sp_users where userid = " + msg.from.id;
 	con.query(sql, function (err, result, fields) {
-
-		if (result.length > 0) {
-			console.log(result[0].userid);
-		}
-		else {
+		if (!result.length > 0) {
 			let sql = "INSERT INTO sp_users (userid,first_name, last_name, language_code,username,status) VALUES ?";
 			var vals =[[msg.from.id,msg.from.first_name,msg.from.last_name,msg.from.language_code,msg.from.username,1]];
 			con.query(sql, [vals], function (err, result) {
@@ -62,32 +60,27 @@ function isNewUser(msg)
 
 // end of "isNewUser" function
 
-// function "commandList" creates array of arrays with all possible commands in it fetched from database
-//function commandList(callback)
-//{
-//		let sql  = 'SELECT distinct(name) as name,category,product_name FROM sp_menu where name IS NOT NULL UNION SELECT distinct(command) as command ,category,product_name FROM sp_menu where command IS NOT NULL';
-//		var comm = [];
-//		con.query(sql, function (err, result, fields) {
-//			for(var i = 0,len = result.length;i<len;i++)
-//				{
-//					com_row = [result[i].name,result[i].category,result[i].product_name];
-//					comm.push(com_row);
-//				}
-//				callback(comm);
-//		});
-//}
-//
-//function Main(comm)
-//{
-//	for(var i=0,len = comm.length;i<len;i++)
-//		{
-//			console.log(comm[i][0]);
-//		}
-//	//console.log(comm);
-//}
-//
-//commandList(Main);
+function checkCommand(callback,msg)
+{
+		
+		let v = mysql.escape(emojiStrip(msg.text));
+		let sql  = 'SELECT * FROM command_list WHERE name = ' + v;
+		con.query(sql, function (err, result, fields) {
+				callback(result,msg);
+		});
+}
 
+function Main(result,msg)
+{
+			if (result.length > 0) {
+				if(v = '/start')
+					onStart(msg);
+			}
+}
+
+bot.on('text',(msg) => {
+	checkCommand(Main,msg);
+});
 
 //function "onStart"
 function onStart(msg)
@@ -116,7 +109,8 @@ function onStart(msg)
 	function buildReplyMarkup(menu)
 	{
 		let replyMarkup = bot.keyboard(menu, {resize: true})
-		return bot.sendMessage(msg.from.id, txt, {replyMarkup});
+		bot.sendMessage(msg.from.id, txt);
+		return bot.sendMessage(msg.from.id, "Выберите категорию...", {replyMarkup});
 	}
 	replyMarkup = fetchMenuButtons(buildReplyMarkup);
 }
@@ -146,9 +140,9 @@ bot.on('edit', (msg) => {
 
 
 
-bot.on([/^\/start$/, /^\/back$/], msg => {
-	onStart(msg);
-});
+//bot.on([/^\/start$/, /^\/back$/], msg => {
+//	onStart(msg);
+//});
 
 //bot.on('text', (msg) => 
 //	{

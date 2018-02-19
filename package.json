@@ -121,6 +121,8 @@
       "resolved": "https://registry.npmjs.org/ecc-jsbn/-/ecc-jsbn-0.1.1.tgz",
       "version": "0.1.1"
     },
+    "emoji-regex": "^6.5.1",
+    "emoji-strip": "^1.0.1",
     "extend": {
       "integrity": "sha1-p1Xqe8Gt/MWjHOfnYtuq3F5jZEQ=",
       "resolved": "https://registry.npmjs.org/extend/-/extend-3.0.1.tgz",
