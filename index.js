@@ -6,7 +6,8 @@ const emoji = require('node-emoji')
 
 //create connection
 
-const con = mysql.createConnection({
+const con = mysql.createPool({
+  connectionLimit : 10,
   host: 'localhost',
   user: 'root',
   password: '123456',
@@ -29,7 +30,6 @@ function fetchdata(callback,msg){
 	con.query("SELECT * FROM test_tbl", function (err, result, fields) {
 		if (err) throw err;
 		res = result[0].name
-		//console.log(res);
 		callback(null,res,msg);
 	});
 }
@@ -44,7 +44,6 @@ function isNewUser(msg)
 			console.log(result[0].userid);
 		}
 		else {
-
 			let sql = "INSERT INTO sp_users (userid,first_name, last_name, language_code,username,status) VALUES ?";
 			var vals =[[msg.from.id,msg.from.first_name,msg.from.last_name,msg.from.language_code,msg.from.username,1]];
 			con.query(sql, [vals], function (err, result) {
