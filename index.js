@@ -25,6 +25,9 @@ const bot = new TeleBot({
 
 //functions list
 
+//  test function 
+//	|||||||
+//  vvvvvvv
 function fetchdata(callback,msg){
 	var res;
 	con.query("SELECT * FROM test_tbl", function (err, result, fields) {
@@ -33,8 +36,11 @@ function fetchdata(callback,msg){
 		callback(null,res,msg);
 	});
 }
+//end of test fucntion
 
 
+// function "isNewUser" identifies new user
+// if is new user adds to record to database
 function isNewUser(msg)
 {
 	let sql = "Select userid from sp_users where userid = " + msg.from.id;
@@ -52,11 +58,7 @@ function isNewUser(msg)
 			});
 		}
 	});
-
 }
-
-
-
 
 // bot main functionality
 
