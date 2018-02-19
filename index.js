@@ -98,13 +98,15 @@ function onStart(msg)
 	var menu = [];
 	con.query(sql, function (err, result, fields) {
 		if (err) throw err;
-			for(var i = 0,len = result.length;i<len;i++)
-				{ 
-					menu_row = [emoji.get(result[i].emoji) + result[i].name];
-					menu.push(menu_row);
-				}
-				callback(menu);
-	});
+			var len = result.length;
+			for(var i = 0;i<len;i++)
+			{
+				menu_row = [left = emoji.get(result[i].emoji) + result[i].name];
+				menu.push(menu_row);
+			}
+			menu.push([emoji.get('shopping_bags') + "Корзина"]);
+			callback(menu);
+		});
 	}
 	function buildReplyMarkup(menu)
 	{
