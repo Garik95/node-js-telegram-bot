@@ -79,21 +79,14 @@ function checkCommand(callback,msg)
 // Main function
 function Main(result,v,msg)
 {
-	var len = result.length;
-	/*switch(v)
-	{
-		case "'/start'": {onStart(msg);} break;
-		case "'Назад'",: {onBack(msg);} break;
-		case "'Едим здорово'": {console.log('123');} break;
-	}*/
+
 	if(v == "'/start'") {onStart(msg);}
-	else if(v == "'Назад'") {onBack(msg);}
+	else if(v == "'Назад'") {onBack(msg.from.id);}
 	else { getSubMenu(msg); }
 	
 }
 
 bot.on('text',(msg) => {
-	//getMenuLoc(msg);
 	checkCommand(Main,msg);
 });
 
@@ -103,7 +96,7 @@ function getSubMenu(msg)
 {
 	function getSubMenuButtons(callback){
 		let v = mysql.escape(emojiStrip(msg.text));
-		var sql = 'select distinct(name) as name,id,emoji from sp_menu where category= ' + v + ' ORDER by sort_id;select description from ymd_categories where name= ' + v;
+		var sql = 'select distinct(name) as name,id,emoji from sp_menu where category= ' + v + ' ORDER by sort_id;select description from ymd_categories where name= ' + v + '; update sp_users set cat='+ v +' where userid=' + msg.from.id;
 		console.log(sql);
 		var menu = [[emoji.get('back') + "Назад" , emoji.get('shopping_bags') + "Корзинка"]];
 		con.query(sql, function (err, result, fields) {
@@ -129,13 +122,19 @@ function getSubMenu(msg)
 //function "onStart"
 function onStart(msg)
 {
-	var txt = "Привет " + msg.from.first_name + JSON.stringify('\ud83d\udc4b') + "! Добро пожаловать в мир здоровой еды и питания от Novatio. Я бот компаньон, я помогу тебе дать подробную информацию о продукции Novatio.";
-	
 	var sql = "update sp_users set cat=NULL,sub_cat=NULL where userid="+msg.from.id;
 	con.query(sql, function (err, result) {
 		if (err) throw err;
 		console.log(result.affectedRows + " record(s) updated");
 	});
+	var txt = "Привет " + msg.from.first_name + JSON.stringify('\ud83d\udc4b') + "! Добро пожаловать в мир здоровой еды и питания от Novatio. Я бот компаньон, я помогу тебе дать подробную информацию о продукции Novatio.";
+	bot.sendMessage(msg.from.id, txt);
+	getMainMenu(msg.from.id);
+}
+// end of "onStart" function
+
+function getMainMenu(userid)
+{
 
 	function fetchMenuButtons(callback){
 	      var sql  = 'SELECT * FROM ymd_categories where id>0 and parent_id = 0 and indx = 0';
@@ -154,29 +153,35 @@ function onStart(msg)
 	}
 	function buildReplyMarkup(menu)
 	{
-		let replyMarkup = bot.keyboard(menu, {resize: true})
-		bot.sendMessage(msg.from.id, txt);
-		return bot.sendMessage(msg.from.id, "Выберите категорию...", {replyMarkup});
+		let replyMarkup = bot.keyboard(menu, {resize: true})	
+		return bot.sendMessage(userid, "Выберите категорию...", {replyMarkup});
 	}
-	replyMarkup = fetchMenuButtons(buildReplyMarkup);
+	fetchMenuButtons(buildReplyMarkup);
 }
-// end of "onStart" function
 
-// function "onBack" send user back to previous menu
-function onBack(msg)
+// function "onBack" sends user back to previous menu
+function onBack(userid)
 {
-	
+	function getBack(result)
+	{
+		if(result[0].cat !== null && result[0].sub_cat == null)
+		{
+			getMainMenu(userid);
+		}
+		console.log(result);
+	}
+
+	getMenuLoc(getBack,userid);
 }
 // end of "onBack" function gets user's current location
 
 // function "getMenuLoc" 
-function getMenuLoc(msg)
+function getMenuLoc(callback,userid)
 {
-	var sql = "SELECT `userid`,`cat`,`sub_cat` FROM `sp_users` where `userid` = " + msg.from.id;
-	//console.log(msg);
+	var sql = "SELECT `userid`,`cat`,`sub_cat` FROM `sp_users` where `userid` = " + userid;
 	con.query(sql, function (err, result) {
 		if (err) throw err;
-		console.log(result);
+		callback(result);
 	});
 
 }
