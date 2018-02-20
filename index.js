@@ -4,16 +4,18 @@ const TeleBot = require('telebot');
 const mysql = require('mysql');
 const emoji = require('node-emoji');
 const emojiStrip = require('emoji-strip');
+var strsim = require('string-similarity');
 //const regex = emojiStrip();
 
 //create connection
 
 const con = mysql.createPool({
-  connectionLimit : 10,
-  host: 'localhost',
-  user: 'root',
-  password: '123456',
-  database: 'admin_nova'
+	connectionLimit : 10,
+	host: 'localhost',
+	user: 'root',
+	password: '123456',
+	database: 'admin_nova',
+	multipleStatements: true
 });
 
 //create new Telebot reference
@@ -60,27 +62,69 @@ function isNewUser(msg)
 
 // end of "isNewUser" function
 
+// function "checkCommand" checks user user command
 function checkCommand(callback,msg)
 {
-		
-		let v = mysql.escape(emojiStrip(msg.text));
-		let sql  = 'SELECT * FROM command_list WHERE name = ' + v;
-		con.query(sql, function (err, result, fields) {
-				callback(result,msg);
-		});
+			let v = mysql.escape(emojiStrip(msg.text));
+			let sql  = "SELECT * FROM command_list WHERE product_name IS NULL and category = 'Команды' and name = " + v;
+			//console.log(sql);
+			con.query(sql, function (err, result, fields) {
+				var len = result.length;
+				if(len > 0)	{	callback(result,v,msg);	}
+				else {bot.sendMessage(msg.from.id, "AWWWWW! Can not recognize your command!");}
+			});
 }
 
-function Main(result,msg)
+
+// Main function
+function Main(result,v,msg)
 {
-			if (result.length > 0) {
-				if(v = '/start')
-					onStart(msg);
-			}
+	var len = result.length;
+	/*switch(v)
+	{
+		case "'/start'": {onStart(msg);} break;
+		case "'Назад'",: {onBack(msg);} break;
+		case "'Едим здорово'": {console.log('123');} break;
+	}*/
+	if(v == "'/start'") {onStart(msg);}
+	else if(v == "'Назад'") {onBack(msg);}
+	else { getSubMenu(msg); }
+	
 }
 
 bot.on('text',(msg) => {
+	//getMenuLoc(msg);
 	checkCommand(Main,msg);
 });
+
+
+// function "getSubMenu" builds sub menu according to given paramater (e.g. "Едим Здорово")
+function getSubMenu(msg)
+{
+	function getSubMenuButtons(callback){
+		let v = mysql.escape(emojiStrip(msg.text));
+		var sql = 'select distinct(name) as name,id,emoji from sp_menu where category= ' + v + ' ORDER by sort_id;select description from ymd_categories where name= ' + v;
+		console.log(sql);
+		var menu = [[emoji.get('back') + "Назад" , emoji.get('shopping_bags') + "Корзинка"]];
+		con.query(sql, function (err, result, fields) {
+					let len = result[0].length;
+					for(var i=0;i<len;i++)
+					{
+						menu_row = [emoji.get(result[0][i].emoji) + result[0][i].name];
+						menu.push(menu_row);
+					}
+					callback(menu,result[1][0].description);
+				});
+	}
+
+	function buildSubMenuReplyMarkup(menu,description){
+		let replyMarkup = bot.keyboard(menu, {resize: true})
+		return bot.sendMessage(msg.from.id, description, {replyMarkup});
+	}
+
+	getSubMenuButtons(buildSubMenuReplyMarkup);
+}
+// end of function "getSubMenu"
 
 //function "onStart"
 function onStart(msg)
@@ -101,10 +145,10 @@ function onStart(msg)
 			var len = result.length;
 			for(var i = 0;i<len;i++)
 			{
-				menu_row = [left = emoji.get(result[i].emoji) + result[i].name];
+				menu_row = [emoji.get(result[i].emoji) + result[i].name];
 				menu.push(menu_row);
 			}
-			menu.push([emoji.get('shopping_bags') + "Корзина"]);
+			menu.push([/*emoji.get('shopping_bags') + */"Корзина"]);
 			callback(menu);
 		});
 	}
@@ -117,6 +161,27 @@ function onStart(msg)
 	replyMarkup = fetchMenuButtons(buildReplyMarkup);
 }
 // end of "onStart" function
+
+// function "onBack" send user back to previous menu
+function onBack(msg)
+{
+	
+}
+// end of "onBack" function gets user's current location
+
+// function "getMenuLoc" 
+function getMenuLoc(msg)
+{
+	var sql = "SELECT `userid`,`cat`,`sub_cat` FROM `sp_users` where `userid` = " + msg.from.id;
+	//console.log(msg);
+	con.query(sql, function (err, result) {
+		if (err) throw err;
+		console.log(result);
+	});
+
+}
+
+
 
 // bot main functionality
 
