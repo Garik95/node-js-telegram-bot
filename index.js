@@ -66,11 +66,15 @@ function isNewUser(msg)
 function checkCommand(callback,msg)
 {
 			let v = mysql.escape(emojiStrip(msg.text));
+			console.log(v);
 			let sql  = "SELECT * FROM command_list WHERE product_name IS NULL and category = 'Команды' and name = " + v;
-			//console.log(sql);
+			console.log(sql);
 			con.query(sql, function (err, result, fields) {
-				var len = result.length;
-				if(len > 0)	{	callback(result,v,msg);	}
+				//console.log(result[0]);
+				//console.log(result[1]);
+				var len0 = result.length;
+				if(len0 > 0)	{	callback(result[0],v,msg);	}
+				else if(len0 == 0 )	{	getProducts(msg);	}
 				else {bot.sendMessage(msg.from.id, "AWWWWW! Can not recognize your command!");}
 			});
 }
@@ -79,10 +83,9 @@ function checkCommand(callback,msg)
 // Main function
 function Main(result,v,msg)
 {
-
 	if(v == "'/start'") {onStart(msg);}
-	else if(v == "'Назад'") {onBack(msg.from.id);}
-	else { getSubMenu(msg); }
+	else if(v == "'Назад'") {onBack(msg);}
+	else { getSubMenu(msg.text,msg.from.id); }
 	
 }
 
@@ -90,15 +93,38 @@ bot.on('text',(msg) => {
 	checkCommand(Main,msg);
 });
 
+// function "getProducts" gets list of available products according to given parameter
+function getProducts(msg)
+{
+	function getProductList(callback){
+		var menu = [[emoji.get('back') + "Назад" , emoji.get('telephone') + "Спросить Вживую"]];
+		var sql = "SELECT * FROM sp_product `p` left outer join `sp_price` `pr` on `p`.`product_id` = `pr`.`product_id` where sp_category_id = (select id from ymd_categories where name = '" + msg.text +"' );  update sp_users set cat=(select distinct(category) from sp_menu where name = '"+msg.text+"') , sub_cat = '"+msg.text+"' where userid=" + msg.from.id;
+		console.log(sql);
+		con.query(sql, function (err, result, fields) {
+			var len = result[0].length;
+			for(var i=0;i<len;i++)
+			{
+				menu_row = [result[0][i].product_name];
+				menu.push(menu_row);
+			}
+			callback(menu);
+		});
+	}
+	function buildProductReplyMarkup(menu){
+		let replyMarkup = bot.keyboard(menu, {resize: true});
+		return bot.sendMessage(msg.from.id, "Выберите продукт:", {replyMarkup});
+	}
+	getProductList(buildProductReplyMarkup);
+}
 
 // function "getSubMenu" builds sub menu according to given paramater (e.g. "Едим Здорово")
-function getSubMenu(msg)
+function getSubMenu(text,userid)
 {
 	function getSubMenuButtons(callback){
-		let v = mysql.escape(emojiStrip(msg.text));
-		var sql = 'select distinct(name) as name,id,emoji from sp_menu where category= ' + v + ' ORDER by sort_id;select description from ymd_categories where name= ' + v + '; update sp_users set cat='+ v +' where userid=' + msg.from.id;
+		let v = mysql.escape(emojiStrip(text));
+		var sql = 'select distinct(name) as name,id,emoji from sp_menu where category= ' + v + ' ORDER by sort_id;select description from ymd_categories where name= ' + v + '; update sp_users set cat='+ v +',sub_cat = NULL where userid=' + userid;
 		console.log(sql);
-		var menu = [[emoji.get('back') + "Назад" , emoji.get('shopping_bags') + "Корзинка"]];
+		var menu = [[emoji.get('back') + "Назад" ,emoji.get('inbox_tray') + "Корзинка"]];
 		con.query(sql, function (err, result, fields) {
 					let len = result[0].length;
 					for(var i=0;i<len;i++)
@@ -112,7 +138,7 @@ function getSubMenu(msg)
 
 	function buildSubMenuReplyMarkup(menu,description){
 		let replyMarkup = bot.keyboard(menu, {resize: true})
-		return bot.sendMessage(msg.from.id, description, {replyMarkup});
+		return bot.sendMessage(userid, description, {replyMarkup});
 	}
 
 	getSubMenuButtons(buildSubMenuReplyMarkup);
@@ -137,17 +163,17 @@ function getMainMenu(userid)
 {
 
 	function fetchMenuButtons(callback){
-	      var sql  = 'SELECT * FROM ymd_categories where id>0 and parent_id = 0 and indx = 0';
+	      var sql  = 'SELECT * FROM ymd_categories where id>0 and parent_id = 0 and indx = 0; update sp_users set cat = NULL, sub_cat=NULL where userid =' + userid;
 	var menu = [];
 	con.query(sql, function (err, result, fields) {
 		if (err) throw err;
-			var len = result.length;
+			var len = result[0].length;
 			for(var i = 0;i<len;i++)
 			{
-				menu_row = [emoji.get(result[i].emoji) + result[i].name];
+				menu_row = [emoji.get(result[0][i].emoji) + result[0][i].name];
 				menu.push(menu_row);
 			}
-			menu.push([/*emoji.get('shopping_bags') + */"Корзина"]);
+			menu.push([emoji.get('inbox_tray') + "Корзинка"]);
 			callback(menu);
 		});
 	}
@@ -160,22 +186,27 @@ function getMainMenu(userid)
 }
 
 // function "onBack" sends user back to previous menu
-function onBack(userid)
+function onBack(msg)
 {
+	var userid = msg.from.id;
 	function getBack(result)
 	{
 		if(result[0].cat !== null && result[0].sub_cat == null)
 		{
 			getMainMenu(userid);
 		}
-		console.log(result);
+		if(result[0].cat !== null && result[0].sub_cat !== null)
+		{
+			getSubMenu(result[0].cat,userid);
+		}
+		//console.log(result);
 	}
 
 	getMenuLoc(getBack,userid);
 }
 // end of "onBack" function gets user's current location
 
-// function "getMenuLoc" 
+// function "getMenuLoc"  performs a query for checking current user location
 function getMenuLoc(callback,userid)
 {
 	var sql = "SELECT `userid`,`cat`,`sub_cat` FROM `sp_users` where `userid` = " + userid;
@@ -183,8 +214,8 @@ function getMenuLoc(callback,userid)
 		if (err) throw err;
 		callback(result);
 	});
-
 }
+// end of function "getMenuLoc"
 
 
 
