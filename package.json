@@ -392,6 +392,7 @@
       "resolved": "https://registry.npmjs.org/stringstream/-/stringstream-0.0.5.tgz",
       "version": "0.0.5"
     },
+    "system-sleep": "^1.3.6",
     "telebot": "^1.2.3",
     "tough-cookie": {
       "integrity": "sha1-C2GKVWW23qkL80JdBNVe3EdadWE=",

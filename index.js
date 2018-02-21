@@ -5,6 +5,7 @@ const mysql = require('mysql');
 const emoji = require('node-emoji');
 const emojiStrip = require('emoji-strip');
 var strsim = require('string-similarity');
+var sleep = require('system-sleep');
 //const regex = emojiStrip();
 
 //create connection
@@ -65,8 +66,7 @@ function isNewUser(msg)
 // function "checkCommand" checks user user command
 function checkCommand(callback,msg)
 {
-			let v = mysql.escape(emojiStrip(msg.text));
-			console.log(v);
+			var v = mysql.escape(emojiStrip(msg.text));
 			let sql  = "SELECT * FROM command_list WHERE product_name IS NULL and category = 'Команды' and name = " + v;
 			console.log(sql);
 			con.query(sql, function (err, result, fields) {
@@ -74,8 +74,22 @@ function checkCommand(callback,msg)
 				//console.log(result[1]);
 				var len0 = result.length;
 				if(len0 > 0)	{	callback(result[0],v,msg);	}
-				else if(len0 == 0 )	{	getProducts(msg);	}
-				else {bot.sendMessage(msg.from.id, "AWWWWW! Can not recognize your command!");}
+				else if(len0 == 0 )	{
+					let sql = "SELECT * FROM sp_product `p` left outer join `sp_price` `pr` on `p`.`product_id` = `pr`.`product_id` where product_name =" + v;
+					console.log(sql);
+					con.query(sql, function (err, result, fields) {
+						if(result.length == 0)
+						{
+							getProducts(msg);
+						}else if(result.length > 0)
+						{
+							getProduct(msg,result);
+							//console.log(msg.from.id + " " + result.product_Photo);
+							//bot.sendPhoto(msg.from.id,result[0].product_Photo);
+						}
+					});
+					}
+				else {	bot.sendMessage(msg.from.id, "AWWWWW! Can not recognize your command!");	}
 			});
 }
 
@@ -116,7 +130,25 @@ function getProducts(msg)
 	}
 	getProductList(buildProductReplyMarkup);
 }
+// end of "getProducts" function
+// function "getProduct" get all information about product
+function getProduct(msg,res)
+{
+	var prd = res[0].product_name + " - Цена:" + res[0].Price + " Сум";
+	bot.sendPhoto(msg.from.id,res[0].product_Photo);
+	sleep(100);
+	let replyMarkup = bot.inlineKeyboard([
+        [
+            bot.inlineButton(emoji.get('heavy_dollar_sign') + 'Купить!', {callback: res[0].product_id}),
+            bot.inlineButton(emoji.get('eyeglasses') + 'Подробно...', {callback: res[0].product_id + 'd'})
+        ], [
+            bot.inlineButton(emoji.get('inbox_tray') + 'Корзина', {callback: 'Bin'})
+        ]
+    ]);
 
+    return bot.sendMessage(msg.from.id, prd, {replyMarkup});
+}
+// end of function "getProduct"
 // function "getSubMenu" builds sub menu according to given paramater (e.g. "Едим Здорово")
 function getSubMenu(text,userid)
 {
