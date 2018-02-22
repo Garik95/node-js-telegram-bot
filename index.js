@@ -140,7 +140,7 @@ function getProduct(msg,res)
 	let replyMarkup = bot.inlineKeyboard([
         [
             bot.inlineButton(emoji.get('heavy_dollar_sign') + 'Купить!', {callback: res[0].product_id}),
-            bot.inlineButton(emoji.get('eyeglasses') + 'Подробно...', {callback: res[0].product_id + 'd'})
+            bot.inlineButton(emoji.get('eyeglasses') + ' Подробно...', {callback: res[0].product_id + 'D'})
         ], [
             bot.inlineButton(emoji.get('inbox_tray') + 'Корзина', {callback: 'Bin'})
         ]
@@ -249,105 +249,101 @@ function getMenuLoc(callback,userid)
 }
 // end of function "getMenuLoc"
 
-
-
-// bot main functionality
-
-bot.on('/new',(msg) => {
-	isNewUser(msg);
-});
-
-
 bot.on('edit', (msg) => {
     return msg.reply.text('I saw it! You edited message!', { asReply: true });
 });
 
-// an example how to fetch and display data from DB!
-//bot.on('text', (msg) => {
-//	
-//	function extract(err,result,msg){
-//		msg.reply.text(result)
-//	}
-//
-//	fetchdata(extract,msg);
-//
-//	});
 
-
-
-//bot.on([/^\/start$/, /^\/back$/], msg => {
-//	onStart(msg);
-//});
-
-//bot.on('text', (msg) => 
-//	{
-//		
-//		
-//	});
-
-
-/*
-// Buttons
-bot.on('/buttons', msg => {
-
-    let replyMarkup = bot.keyboard([
-        [bot.button('contact', 'Your contact'), bot.button('location', 'Your location')],
-        ['/back', '/hide']
-    ], {resize: true});
-
-    return bot.sendMessage(msg.from.id, 'Button example.', {replyMarkup});
-
+bot.on('callbackQuery', msg => {
+	//console.log(msg);
+	checkId(msg);
+	//editMsgKeyboard(msg,false);
+    //bot.answerCallbackQuery(msg.id);
 });
 
-// Hide keyboard
-bot.on('/hide', msg => {
-    return bot.sendMessage(
-        msg.from.id, 'Hide keyboard example. Type /back to show.', {replyMarkup: 'hide'}
-    );
-});
+function checkId(msg)
+{
+	//console.log(msg);
+	var sql = "select * from (select product_id,concat(product_id,'M') as idm,concat(product_id,'P') as idp,concat(product_id,'Back') as idback,concat(product_id,'D') as iddesc from sp_product) a where a.product_id = '"+msg.data+"' or a.idm = '"+msg.data+"' or a.idp = '"+msg.data+"' or a.idback = '"+msg.data+ "' or a.iddesc = '"+msg.data+"'";
+	console.log(sql);
+	con.query(sql, function (err, result) {
+		//if (err) throw err;
+		console.log(result);
+		if(result.length > 0){
+			if(result[0].product_id == msg.data) {	editMsgKeyboard(msg,false);	}
+			if(result[0].iddesc == msg.data) {	getProductDesc(msg);	}
+	//		if(result[0].idm == msg.data) {}
+	//		if(result[0].idp == msg.data) {}
+			if(result[0].idback == msg.data) {editMsgKeyboard(msg,true)}
+		}
 
-// On location on contact message
-bot.on(['location', 'contact'], (msg, self) => {
-    return bot.sendMessage(msg.from.id, `Thank you for ${ self.type }.`);
-});
+		bot.answerCallbackQuery(msg.id);
+	});
+}
 
-// Inline buttons
-bot.on('/inlineKeyboard', msg => {
+function getProductDesc(msg)
+{
+	id = msg.data.match(/\d/g);
+	id = id.join("");
+	//console.log(id);
+	var [chatId, messageId] = [msg.from.id, msg.message.message_id];
+	var replyMarkup;
+	var sql = "select product_Description as pd from sp_product where product_id =" + id;
+	con.query(sql, function (err, result) {
+		if (err) throw err;
+		console.log(result);
+		replyMarkup = bot.inlineKeyboard([
+			[
+				bot.inlineButton(emoji.get('heavy_minus_sign'), {callback: id + 'M'}),
+				bot.inlineButton(emoji.get('heavy_plus_sign'), {callback: id + 'P'}),
+				bot.inlineButton(emoji.get('back') + 'Назад', {callback: id + 'Back'})
+			],
+			[
+				bot.inlineButton(emoji.get('inbox_tray') + 'Корзина', {callback: 'Bin'})
+			]
+		]);
+		bot.editMessageText({chatId, messageId},result[0].pd, {replyMarkup});
 
-    let replyMarkup = bot.inlineKeyboard([
+	});
+}
+
+
+function editMsgKeyboard(msg,is_back)
+{
+	var [chatId, messageId] = [msg.from.id, msg.message.message_id];
+	var replyMarkup;
+	if(is_back == false) 
+	{
+		replyMarkup = bot.inlineKeyboard([
         [
-            bot.inlineButton('callback', {callback: 'this_is_data'}),
-            bot.inlineButton('inline', {inline: 'some query'})
-        ], [
-            bot.inlineButton('url', {url: 'https://telegram.org'})
+            bot.inlineButton(emoji.get('heavy_minus_sign'), {callback: msg.data + 'M'}),
+			bot.inlineButton(emoji.get('heavy_plus_sign'), {callback: msg.data + 'P'}),
+            bot.inlineButton(emoji.get('back') + 'Назад', {callback: msg.data + 'Back'})
+        ],
+		[
+            bot.inlineButton(emoji.get('inbox_tray') + 'Корзина', {callback: 'Bin'})
         ]
     ]);
+	}
+	if(is_back == true) 
+	{
+		var id = msg.data.match(/\d/g);
+		id = id.join("");
+		console.log(id);
+		replyMarkup = bot.inlineKeyboard([
+        [
+            bot.inlineButton(emoji.get('heavy_dollar_sign') + 'Купить!', {callback: id}),
+            bot.inlineButton(emoji.get('eyeglasses') + ' Подробно...', {callback: id + 'D'})
+        ], 
+		[
+            bot.inlineButton(emoji.get('inbox_tray') + 'Корзина', {callback: 'Bin'})
+        ]
+    ]);
+	}
+    return bot.editMessageReplyMarkup({chatId, messageId}, {replyMarkup});
+}
 
-    return bot.sendMessage(msg.from.id, 'Inline keyboard example.', {replyMarkup});
 
-});
 
-// Inline button callback
-bot.on('callbackQuery', msg => {
-    // User message alert
-    return bot.answerCallbackQuery(msg.id, `Inline button callback: ${ msg.data }`, true);
-});
-
-// Inline query
-bot.on('inlineQuery', msg => {
-
-    const query = msg.query;
-    const answers = bot.answerList(msg.id);
-
-    answers.addArticle({
-        id: 'query',
-        title: 'Inline Query',
-        description: `Your query: ${ query }`,
-        message_text: 'Click!'
-    });
-
-    return bot.answerQuery(answers);
-
-});*/
 
 bot.start();
