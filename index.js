@@ -6,6 +6,7 @@ const emoji = require('node-emoji');
 const emojiStrip = require('emoji-strip');
 var strsim = require('string-similarity');
 var sleep = require('system-sleep');
+var HTML = require('html-parse-stringify');
 //const regex = emojiStrip();
 
 //create connection
@@ -272,7 +273,7 @@ function checkout(msg)
 	con.query(sql, function (err, result) {
 		for(var i=0;i<result.length;i++)
 		{
-			str = str + "<i>" + (i+1) + ") " + result[i].product + "\n" + result[i].quantity + "x" + result[i].price_id + "=" + result[i].quantity*result[i].price_id + " Сум</i>\n";
+			str = str  + (i+1) + ") " + result[i].product + "\n" + result[i].quantity + "x" + result[i].price_id + "=" + result[i].quantity*result[i].price_id + " Сум\n";
 		}
 	});
 	var sql = "SELECT sum(price_id*quantity) as sum FROM `sp_transactions` WHERE state_id = 1 and client_id =" + msg.from.id;
@@ -282,12 +283,12 @@ function checkout(msg)
 		{
 			var sum = result[0].sum;
 			sum = sum * 100;
-			var list = [{"label":"Общая сумма","amount":sum},{"label":"Скидка","amount":0}];
+			var list = [{"label":"Общая сумма","amount":sum},{"label":"Скидка","amount":-100000}];
 			var [url,width,height] = ["https://somonitrading.com/tg/logo.png",100,100];
-			var photo = [{"url":"https://somonitrading.com/tg/logo.png","photo_width":100,"photo_height":100}];
-			//var photo = [{url,width,height}];
+			//var photo = [{"url":"https://somonitrading.com/tg/logo.png","width":100,"height":100}];
+			var photo = {url,width,height};
 			var [name,phoneNumber] = [true,true];
-			var needs = [{name,phoneNumber}];
+			var needs = {name,phoneNumber};
 			replyMarkup = bot.inlineKeyboard([
 			[
 				bot.inlineButton('Оплатить через Click', {pay: true}),
@@ -295,9 +296,8 @@ function checkout(msg)
 
 			]
 			]);
-			var [title,description,payload, providerToken, startParameter, currency, prices,photo_url,need,replyMarkup] = ["Оформление заказа",str,"payload","398062629:TEST:999999999_F91D8F69C042267444B74CC0B3C747757EB0E065","start_parameter",'UZS',list,"https://somonitrading.com/tg/logo.png",true,replyMarkup];
-			var invoice = bot.sendInvoice(msg.from.id,{title,description,payload, providerToken, startParameter, currency, prices,photo_url,name,replyMarkup});
-			console.log({title,description,payload, providerToken, startParameter, currency, prices,photo_url,need,replyMarkup});
+			var [title,description,payload, providerToken, startParameter, currency, prices,photo,need,replyMarkup] = ["Оформление заказа",str,"payload","398062629:TEST:999999999_F91D8F69C042267444B74CC0B3C747757EB0E065","start_parameter",'UZS',list,photo,needs,replyMarkup];
+			var invoice = bot.sendInvoice(msg.from.id,{title,description,payload, providerToken, startParameter, currency, prices,photo,need,replyMarkup});
 		}
 		else
 		{
