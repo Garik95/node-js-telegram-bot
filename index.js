@@ -263,21 +263,90 @@ bot.on('callbackQuery', msg => {
 
 function checkId(msg)
 {
-	//console.log(msg);
 	var sql = "select * from (select product_id,concat(product_id,'M') as idm,concat(product_id,'P') as idp,concat(product_id,'Back') as idback,concat(product_id,'D') as iddesc from sp_product) a where a.product_id = '"+msg.data+"' or a.idm = '"+msg.data+"' or a.idp = '"+msg.data+"' or a.idback = '"+msg.data+ "' or a.iddesc = '"+msg.data+"'";
 	console.log(sql);
+	//var [text,showAlert] = ["123aaaaaaaaaaaaaaaaaaaaaaaaa!",false];
 	con.query(sql, function (err, result) {
 		//if (err) throw err;
 		console.log(result);
 		if(result.length > 0){
 			if(result[0].product_id == msg.data) {	editMsgKeyboard(msg,false);	}
 			if(result[0].iddesc == msg.data) {	getProductDesc(msg);	}
-	//		if(result[0].idm == msg.data) {}
-	//		if(result[0].idp == msg.data) {}
-			if(result[0].idback == msg.data) {editMsgKeyboard(msg,true)}
+			if(result[0].idm == msg.data) {	removeFromCart(msg);	}
+			if(result[0].idp == msg.data) { addToCart(msg);		}
+			if(result[0].idback == msg.data) {	editMsgKeyboard(msg,true);	}
 		}
 
-		bot.answerCallbackQuery(msg.id);
+		//bot.answerCallbackQuery(msg.id); 
+	});
+}
+
+function removeFromCart(msg)
+{
+	id = msg.data.match(/\d/g);
+	id = id.join("");
+	var sql = "select transaction_id,quantity from sp_transactions where client_id = '" + msg.from.id +"' and state_id = 1 and product_id = " + id + ";select Price from sp_price where product_id=" + id;
+	console.log(sql);
+	con.query(sql, function (err, result, fields) {
+		if (err) throw err;
+		console.log(result[1][0].Price);
+		if(result[0].length > 0)
+		{
+			console.log(">0");
+			var qty = result[0][0].quantity - 1;
+			if(qty > 0)
+			{
+				var sql1 = "update sp_transactions set `quantity`="+qty+" where `client_id`="+msg.from.id+" and `product_id`=" + id;
+			}
+			if(qty == 0)
+			{
+				var sql1 = "delete from sp_transactions where `client_id`=" + msg.from.id + " and `product_id`=" + id;
+			}
+			con.query(sql1, function (err, result, fields) {
+				var [text,showAlert] = [qty + " штук(а) в корзине",false];
+				return bot.answerCallbackQuery(msg.id,{text,showAlert});
+			});
+		}
+		if(result[0].length == 0)
+		{
+			var [text,showAlert] = ["Выбранного продукта нету в корзине",true];
+			return bot.answerCallbackQuery(msg.id,{text,showAlert});
+
+		}
+	});
+}
+
+function addToCart(msg)
+{
+	id = msg.data.match(/\d/g);
+	id = id.join("");
+	var sql = "select transaction_id,quantity from sp_transactions where client_id = '" + msg.from.id +"' and state_id = 1 and product_id = " + id + ";select Price from sp_price where product_id=" + id;
+	console.log(sql);
+	con.query(sql, function (err, result, fields) {
+		if (err) throw err;
+		console.log(result[1][0].Price);
+		if(result[0].length > 0)
+		{
+			console.log(">0");
+			var qty = result[0][0].quantity + 1;
+			var sql1 = "update sp_transactions set `quantity`="+qty+" where `client_id`="+msg.from.id+" and `product_id`=" + id;
+			console.log(sql1);
+			con.query(sql1, function (err, result, fields) {
+				var [text,showAlert] = [qty + " штук(а) в корзине",false];
+				return bot.answerCallbackQuery(msg.id,{text,showAlert});
+			});
+		}
+		if(result[0].length == 0)
+		{
+			console.log("=0");
+			var qty = 1;
+			var sql1 = "insert into sp_transactions (`client_id`,`product_id`,`price_id`,`quantity`) values ("+msg.from.id+","+id+","+result[1][0].Price+","+qty+")";
+			console.log(sql1);
+			con.query(sql1, function (err, result, fields) {
+				var [text,showAlert] = [qty + " штук(а) в корзине",false];
+				return bot.answerCallbackQuery(msg.id,{text,showAlert});
+			});
+		}
 	});
 }
 
@@ -291,7 +360,6 @@ function getProductDesc(msg)
 	var sql = "select product_Description as pd from sp_product where product_id =" + id;
 	con.query(sql, function (err, result) {
 		if (err) throw err;
-		console.log(result);
 		replyMarkup = bot.inlineKeyboard([
 			[
 				bot.inlineButton(emoji.get('heavy_minus_sign'), {callback: id + 'M'}),
@@ -303,7 +371,7 @@ function getProductDesc(msg)
 			]
 		]);
 		bot.editMessageText({chatId, messageId},result[0].pd, {replyMarkup});
-
+		return bot.answerCallbackQuery(msg.id);
 	});
 }
 
@@ -340,6 +408,7 @@ function editMsgKeyboard(msg,is_back)
         ]
     ]);
 	}
+	bot.answerCallbackQuery(msg.id);
     return bot.editMessageReplyMarkup({chatId, messageId}, {replyMarkup});
 }
 
