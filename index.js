@@ -28,22 +28,6 @@ const bot = new TeleBot({
     }
 });
 
-//functions list
-
-//  test function 
-//	|||||||
-//  vvvvvvv
-function fetchdata(callback,msg){
-	var res;
-	con.query("SELECT * FROM test_tbl", function (err, result, fields) {
-		if (err) throw err;
-		res = result[0].name
-		callback(null,res,msg);
-	});
-}
-//end of test fucntion
-
-
 // function "isNewUser" identifies new user
 // if is new user adds to record to database
 function isNewUser(msg)
@@ -70,8 +54,6 @@ function checkCommand(callback,msg)
 			let sql  = "SELECT * FROM command_list WHERE product_name IS NULL and category = 'Команды' and name = " + v;
 			console.log(sql);
 			con.query(sql, function (err, result, fields) {
-				//console.log(result[0]);
-				//console.log(result[1]);
 				var len0 = result.length;
 				if(len0 > 0)	{	callback(result[0],v,msg);	}
 				else if(len0 == 0 )	{
@@ -84,8 +66,6 @@ function checkCommand(callback,msg)
 						}else if(result.length > 0)
 						{
 							getProduct(msg,result);
-							//console.log(msg.from.id + " " + result.product_Photo);
-							//bot.sendPhoto(msg.from.id,result[0].product_Photo);
 						}
 					});
 					}
@@ -99,6 +79,7 @@ function Main(result,v,msg)
 {
 	if(v == "'/start'") {onStart(msg);}
 	else if(v == "'Назад'") {onBack(msg);}
+	else if(v == "'Корзинка'") {getCart(msg,false);}
 	else { getSubMenu(msg.text,msg.from.id); }
 	
 }
@@ -255,30 +236,108 @@ bot.on('edit', (msg) => {
 
 
 bot.on('callbackQuery', msg => {
-	//console.log(msg);
 	checkId(msg);
-	//editMsgKeyboard(msg,false);
-    //bot.answerCallbackQuery(msg.id);
 });
 
 function checkId(msg)
 {
-	var sql = "select * from (select product_id,concat(product_id,'M') as idm,concat(product_id,'P') as idp,concat(product_id,'Back') as idback,concat(product_id,'D') as iddesc from sp_product) a where a.product_id = '"+msg.data+"' or a.idm = '"+msg.data+"' or a.idp = '"+msg.data+"' or a.idback = '"+msg.data+ "' or a.iddesc = '"+msg.data+"'";
-	console.log(sql);
-	//var [text,showAlert] = ["123aaaaaaaaaaaaaaaaaaaaaaaaa!",false];
-	con.query(sql, function (err, result) {
-		//if (err) throw err;
-		console.log(result);
-		if(result.length > 0){
-			if(result[0].product_id == msg.data) {	editMsgKeyboard(msg,false);	}
-			if(result[0].iddesc == msg.data) {	getProductDesc(msg);	}
-			if(result[0].idm == msg.data) {	removeFromCart(msg);	}
-			if(result[0].idp == msg.data) { addToCart(msg);		}
-			if(result[0].idback == msg.data) {	editMsgKeyboard(msg,true);	}
-		}
+	if(msg.data === "Offer")
+	{
+		checkout(msg);
+	}
+	else if(msg.data === "Bin")
+	{
+		getCart(msg,true);
+	}
+	else 
+	{
+		var sql = "select * from (select product_id,concat(product_id,'M') as idm,concat(product_id,'P') as idp,concat(product_id,'Back') as idback,concat(product_id,'D') as iddesc from sp_product) a where a.product_id = '"+msg.data+"' or a.idm = '"+msg.data+"' or a.idp = '"+msg.data+"' or a.idback = '"+msg.data+ "' or a.iddesc = '"+msg.data+"'";
+		con.query(sql, function (err, result) {
+			if(result.length > 0){
+				if(result[0].product_id == msg.data) {	editMsgKeyboard(msg,false);	}
+				if(result[0].iddesc == msg.data) {	getProductDesc(msg);	}
+				if(result[0].idm == msg.data) {	removeFromCart(msg);	}
+				if(result[0].idp == msg.data) { addToCart(msg);		}
+				if(result[0].idback == msg.data) {	editMsgKeyboard(msg,true);	}
+			} 
+		});
+	}
+}
 
-		//bot.answerCallbackQuery(msg.id); 
+// needs development 
+function checkout(msg)
+{
+	var str = "";
+	var sql = "SELECT quantity,price_id,product_id,(select product_name from sp_product p where p.product_id=t.product_id) as product FROM `sp_transactions` t WHERE state_id = 1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result) {
+		for(var i=0;i<result.length;i++)
+		{
+			str = str + "<i>" + (i+1) + ") " + result[i].product + "\n" + result[i].quantity + "x" + result[i].price_id + "=" + result[i].quantity*result[i].price_id + " Сум</i>\n";
+		}
 	});
+	var sql = "SELECT sum(price_id*quantity) as sum FROM `sp_transactions` WHERE state_id = 1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result) {
+		str = str + "Общая сумма: " + result[0].sum + " Сум\n";
+		if(result[0].sum !== null)
+		{
+			var sum = result[0].sum;
+			sum = sum * 100;
+			var list = [{"label":"Общая сумма","amount":sum},{"label":"Скидка","amount":0}];
+			var [url,width,height] = ["https://somonitrading.com/tg/logo.png",100,100];
+			var photo = [{"url":"https://somonitrading.com/tg/logo.png","photo_width":100,"photo_height":100}];
+			//var photo = [{url,width,height}];
+			var [name,phoneNumber] = [true,true];
+			var needs = [{name,phoneNumber}];
+			replyMarkup = bot.inlineKeyboard([
+			[
+				bot.inlineButton('Оплатить через Click', {pay: true}),
+				bot.inlineButton('Оплатить наличними', {callback: "cash"}),
+
+			]
+			]);
+			var [title,description,payload, providerToken, startParameter, currency, prices,photo_url,need,replyMarkup] = ["Оформление заказа",str,"payload","398062629:TEST:999999999_F91D8F69C042267444B74CC0B3C747757EB0E065","start_parameter",'UZS',list,"https://somonitrading.com/tg/logo.png",true,replyMarkup];
+			var invoice = bot.sendInvoice(msg.from.id,{title,description,payload, providerToken, startParameter, currency, prices,photo_url,name,replyMarkup});
+			console.log({title,description,payload, providerToken, startParameter, currency, prices,photo_url,need,replyMarkup});
+		}
+		else
+		{
+			bot.sendMessage(msg.from.id,"Извините у вас нет активных счетов " + emoji.get('disappointed'));
+		}
+	});
+	return bot.answerCallbackQuery(msg.id);
+}
+
+
+function getCart(msg,is_callback)
+{
+	var str = "<b>Список продуктов в корзинке:</b>\n";
+	var sql = "SELECT quantity,price_id,product_id,(select product_name from sp_product p where p.product_id=t.product_id) as product FROM `sp_transactions` t WHERE state_id = 1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result) {
+		for(var i=0;i<result.length;i++)
+		{
+			str = str + "<i>" + (i+1) + ") " + result[i].product + "\n" + result[i].quantity + "x" + result[i].price_id + "=" + result[i].quantity*result[i].price_id + " Сум</i>\n";
+		}
+	});
+	var sql = "SELECT sum(price_id*quantity) as sum FROM `sp_transactions` WHERE state_id = 1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result) {
+		str = str + "Общая сумма: " + result[0].sum + " Сум\n";
+		if(result[0].sum !== null)
+		{
+			replyMarkup = bot.inlineKeyboard([
+			[
+				bot.inlineButton(emoji.get('sunglasses') + 'Оформить', {callback: 'Offer'})
+			]
+			]);			
+			var [parseMode,replyMarkup] = ['HTML',replyMarkup];
+			bot.sendMessage(msg.from.id,str,{parseMode,replyMarkup});
+		}
+		else
+		{
+			bot.sendMessage(msg.from.id,"Ваша корзина пуста" + emoji.get('disappointed'));
+		}
+	});
+	if(is_callback == true) {	return bot.answerCallbackQuery(msg.id); }
+
 }
 
 function removeFromCart(msg)
