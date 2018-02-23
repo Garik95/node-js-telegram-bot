@@ -98,12 +98,21 @@ function getProducts(msg)
 		console.log(sql);
 		con.query(sql, function (err, result, fields) {
 			var len = result[0].length;
-			for(var i=0;i<len;i++)
+			if(len > 0)
 			{
-				menu_row = [result[0][i].product_name];
-				menu.push(menu_row);
-			}
+				for(var i=0;i<len;i++)
+				{
+					menu_row = [result[0][i].product_name];
+					menu.push(menu_row);
+				}
 			callback(menu);
+			}
+			else {
+				let replyMarkup = bot.keyboard([
+					['Главное меню'],
+				], {resize: true});
+				return bot.sendMessage(msg.from.id, emoji.get('thinking_face') + " Эмм... Не понял вашу команду. Может попробуете другую команду... Например, Главное меню" + emoji.get('point_down'), {replyMarkup});
+				}
 		});
 	}
 	function buildProductReplyMarkup(menu){
