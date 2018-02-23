@@ -263,6 +263,7 @@
       "resolved": "https://registry.npmjs.org/lodash.toarray/-/lodash.toarray-4.4.0.tgz",
       "version": "4.4.0"
     },
+    "md5": "^2.2.1",
     "mime-db": {
       "integrity": "sha1-dMZD2i3Z1qRTmZY0ZbJtXKfXHwE=",
       "resolved": "https://registry.npmjs.org/mime-db/-/mime-db-1.30.0.tgz",

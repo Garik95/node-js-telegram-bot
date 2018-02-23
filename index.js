@@ -4,9 +4,8 @@ const TeleBot = require('telebot');
 const mysql = require('mysql');
 const emoji = require('node-emoji');
 const emojiStrip = require('emoji-strip');
-var strsim = require('string-similarity');
 var sleep = require('system-sleep');
-var HTML = require('html-parse-stringify');
+var md5 = require('md5');
 //const regex = emojiStrip();
 
 //create connection
@@ -81,6 +80,7 @@ function Main(result,v,msg)
 	if(v == "'/start'") {onStart(msg);}
 	else if(v == "'Назад'") {onBack(msg);}
 	else if(v == "'Корзинка'") {getCart(msg,false);}
+	else if(v == "'Главное меню'") {	onStart(msg);}
 	else { getSubMenu(msg.text,msg.from.id); }
 	
 }
@@ -160,15 +160,18 @@ function getSubMenu(text,userid)
 // end of function "getSubMenu"
 
 //function "onStart"
-function onStart(msg)
+function onStart(msg,is_new)
 {
 	var sql = "update sp_users set cat=NULL,sub_cat=NULL where userid="+msg.from.id;
 	con.query(sql, function (err, result) {
 		if (err) throw err;
 		console.log(result.affectedRows + " record(s) updated");
 	});
-	var txt = "Привет " + msg.from.first_name + JSON.stringify('\ud83d\udc4b') + "! Добро пожаловать в мир здоровой еды и питания от Novatio. Я бот компаньон, я помогу тебе дать подробную информацию о продукции Novatio.";
-	bot.sendMessage(msg.from.id, txt);
+	if(is_new == true) 
+	{
+		var txt = "Привет " + msg.from.first_name + JSON.stringify('\ud83d\udc4b') + "! Добро пожаловать в мир здоровой еды и питания от Novatio. Я бот компаньон, я помогу тебе дать подробную информацию о продукции Novatio.";
+		bot.sendMessage(msg.from.id, txt);
+	}
 	getMainMenu(msg.from.id);
 }
 // end of "onStart" function
@@ -240,6 +243,49 @@ bot.on('callbackQuery', msg => {
 	checkId(msg);
 });
 
+
+bot.on(['contact'], (msg) => {
+	
+	var sql = "select count(*) as qty from sp_transactions where state_id = 1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result) {
+		if(result[0].qty > 0)
+		{
+			cashCheckout(msg);
+		}
+		else
+		{
+			return bot.sendMessage(msg.from.id, emoji.get('thinking_face'));
+		}
+	});
+
+	function cashCheckout(msg)
+	{
+		var tran_id = md5(Date.now() + "_" + msg.from.id);
+		var sql = "select * from sp_transactions where state_id = 1 and client_id=" + msg.from.id;
+		con.query(sql, function (err, result) {
+			if (err) throw err;
+			for(var i=0;i<result.length;i++)
+			{
+				var sqli = "Insert into receipt_id(id,transaction_id) values ('"+tran_id+"',"+result[0].transaction_id+")";
+				con.query(sqli, function (err, result) {
+					if (err) throw err;				
+				});
+			}
+		});
+		var name = msg.contact.first_name + " " + msg.contact.last_name;
+		var phone = msg.contact.phone_number;
+		var sql = "Insert into billing_info(contact_name,contact_phone,receipt_id,txt,payment_method) values ('" + name +"'," + phone + ",'" + tran_id + "'," + msg.from.id + ",2); update `sp_transactions` set state_id = 2 where state_id = 1 and `client_id`= " + msg.from.id;
+		console.log(sql);
+		con.query(sql, function (err, result) {
+			if (err) throw err;
+		});
+		let replyMarkup = bot.keyboard([
+			['Главное меню'],
+		], {resize: true});
+		return bot.sendMessage(msg.from.id, 'В течении пару минут наши люди вам позвонят для подтверждения заказа', {replyMarkup});
+	}
+});
+
 function checkId(msg)
 {
 	if(msg.data === "Offer")
@@ -249,6 +295,10 @@ function checkId(msg)
 	else if(msg.data === "Bin")
 	{
 		getCart(msg,true);
+	}
+	else if(msg.data === "Cash")
+	{
+		getCash(msg);
 	}
 	else 
 	{
@@ -265,7 +315,25 @@ function checkId(msg)
 	}
 }
 
-// needs development 
+function getCash(msg)
+{
+	var sql = "select count(*) as qty from sp_transactions where state_id = 1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result) {
+		if(result[0].qty > 0)
+		{
+			let replyMarkup = bot.keyboard([
+			[bot.button('contact', emoji.get('telephone') + 'Мой номер')],
+			], {resize: true});
+			return bot.sendMessage(msg.from.id, 'Укажите ваш тедефон', {replyMarkup});
+		}
+		else
+		{
+			return bot.sendMessage(msg.from.id, 'Ваша корзина пуста' + emoji.get('disappointed'));
+		}
+	});
+}
+
+
 function checkout(msg)
 {
 	var str = "";
@@ -285,14 +353,13 @@ function checkout(msg)
 			sum = sum * 100;
 			var list = [{"label":"Общая сумма","amount":sum},{"label":"Скидка","amount":-100000}];
 			var [url,width,height] = ["https://somonitrading.com/tg/logo.png",100,100];
-			//var photo = [{"url":"https://somonitrading.com/tg/logo.png","width":100,"height":100}];
 			var photo = {url,width,height};
 			var [name,phoneNumber] = [true,true];
 			var needs = {name,phoneNumber};
 			replyMarkup = bot.inlineKeyboard([
 			[
 				bot.inlineButton('Оплатить через Click', {pay: true}),
-				bot.inlineButton('Оплатить наличними', {callback: "cash"}),
+				bot.inlineButton('Оплатить наличними', {callback: "Cash"}),
 
 			]
 			]);
