@@ -1,4 +1,4 @@
-  <?php
+<?php
 include("src/Autoloader.php");
   $token = '426046945:AAGKx_kmBbLzpGfB8xdqoz3CIi1-Z2yBuqE';
   $bot = new Telegram\Bot($token, "test_GN_bot", "test_bot_GN");
