@@ -12,10 +12,10 @@ var md5 = require('md5');
 
 const con = mysql.createPool({
 	connectionLimit : 10,
-	host: 'localhost',
-	user: 'root',
-	password: '123456',
-	database: 'admin_nova',
+	host: 'sql12.freemysqlhosting.net',
+	user: 'sql12225761',
+	password: 'gDTfh33P88',
+	database: 'sql12225761',
 	multipleStatements: true
 });
 
@@ -24,7 +24,7 @@ const con = mysql.createPool({
 const bot = new TeleBot({
     token: '209376928:AAG9Ohui0myFbuvgZpDparxDQgkBEreScpE', // Required. Telegram Bot API token.
     polling: { // Optional. Use polling.
-        proxy: 'http://10.20.0.109:3128' // Optional. An HTTP proxy to be used.
+        //proxy: 'http://10.20.0.109:3128' // Optional. An HTTP proxy to be used.
     }
 });
 
