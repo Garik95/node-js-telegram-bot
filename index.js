@@ -113,6 +113,22 @@ bot.on('text',(msg) => {
 	checkCommand(Main,msg);
 });
 
+function onOfferClick(msg)
+{
+	var txt = mysql.escape(emojiStrip(msg.text));
+	var sql  = 'select * from action where name=' + txt;
+	con.query(sql, function (err, result, fields) {
+		console.log(sql);
+		var [caption] = [result[0].description];
+		bot.sendPhoto(msg.from.id,result[0].url,{caption});
+	});
+            	// $query  = mysqli_query($con, $sql);
+				// $row = mysqli_fetch_object($query);
+				// $url = 'https://api.telegram.org/bot'.$token.'/sendPhoto?chat_id='.$tg->user->id;
+                // $url .= '&caption=' .$row->description. '&photo='.$row->url;
+                // $res = file_get_contents($url);
+}
+
 // function "getProducts" gets list of available products according to given parameter
 function getProducts(msg)
 {
@@ -143,7 +159,19 @@ function getProducts(msg)
 		let replyMarkup = bot.keyboard(menu, {resize: true});
 		return bot.sendMessage(msg.from.id, "Выберите продукт:", {replyMarkup});
 	}
-	getProductList(buildProductReplyMarkup);
+	var t = mysql.escape(emojiStrip(msg.text));
+	var sql = 'SELECT (SELECT NAME FROM ymd_categories where id = y.parent_id) AS pr,y.name FROM `ymd_categories` y WHERE name = '+t;
+	con.query(sql, function (err, result, fields) {
+
+		if(result[0].pr === "Акции")
+			{
+				onOfferClick(msg);
+			}
+		else {
+		getProductList(buildProductReplyMarkup);
+		}
+	});
+	
 }
 // end of "getProducts" function
 // function "getProduct" get all information about product
@@ -170,10 +198,10 @@ function getSubMenu(text,userid)
 	function getSubMenuButtons(callback){
 		let v = mysql.escape(emojiStrip(text));
 		var sql = 'select distinct(name) as name,id,emoji from sp_menu where category= ' + v + ' ORDER by sort_id;select description from ymd_categories where name= ' + v + '; update sp_users set cat='+ v +',sub_cat = NULL where userid=' + userid;
-		console.log(sql);
 		var menu = [[emoji.get('back') + "Назад" ,emoji.get('inbox_tray') + "Корзинка"]];
 		con.query(sql, function (err, result, fields) {
-					let len = result[0].length;
+			console.log(sql);		
+			let len = result[0].length;
 					for(var i=0;i<len;i++)
 					{
 						menu_row = [emoji.get(result[0][i].emoji) + result[0][i].name];
@@ -185,10 +213,12 @@ function getSubMenu(text,userid)
 
 	function buildSubMenuReplyMarkup(menu,description){
 		let replyMarkup = bot.keyboard(menu, {resize: true})
+		console.log(menu,description);
 		return bot.sendMessage(userid, description, {replyMarkup});
 	}
 
-	getSubMenuButtons(buildSubMenuReplyMarkup);
+	getSubMenuButtons(buildSubMenuReplyMarkup);		
+
 }
 // end of function "getSubMenu"
 
