@@ -1,0 +1,7 @@
+BJQQG2J6(tTVPRKQ
+
+
+	host: 'sql12.freemysqlhosting.net',
+	user: 'sql12225761',
+	password: 'gDTfh33P88',
+	database: 'sql12225761',
