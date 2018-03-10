@@ -85,6 +85,30 @@ function Main(result,v,msg)
 	
 }
 
+bot.on('preShippingQuery',(msg)=>{
+	console.log(msg);
+	var sql = 'select * from sp_transactions where state_id = 1 and client_id='+msg.from.id;
+	var tran_id = md5(Date.now() + "_" + msg.from.id);
+	con.query(sql, function (err, result, fields) {
+		console.log(result[0].transaction_id);
+		for(var i=0;i<result.length;i++)
+			{
+				var sql1 = "Insert into receipt_id(id,transaction_id) values ('" + tran_id + "'," + result[0].transaction_id + ")"
+				con.query(sql1, function (err, result, fields) {});
+			}
+	});
+	let name,phone;
+	name 	= msg.order_info.name;
+	phone 	= msg.order_info.phone_number;
+	var sql = "Insert into billing_info(contact_name,contact_phone,receipt_id,txt,payment_method) values ('"+name+"','"+phone+"','"+tran_id+"','"+msg.from.id+"',1);update sp_transactions set state_id = 3 where state_id = 1 and client_id="+msg.from.id;
+	con.query(sql, function (err, result, fields) {});    
+	bot.answerPreCheckoutQuery(msg.id,true);
+	let replyMarkup = bot.keyboard([
+		['Главное меню'],
+	], {resize: true});
+	return bot.sendMessage(msg.from.id, 'Ваш заказ оформлен', {replyMarkup});
+});
+
 bot.on('text',(msg) => {
 	checkCommand(Main,msg);
 });
