@@ -110,6 +110,11 @@ bot.on('preShippingQuery',(msg)=>{
 });
 
 bot.on('text',(msg) => {
+	// console.log(emoji.get('coffee'));
+	// if(emoji.hasEmoji('pizza')){ console.log("Has!");}
+	// var str = emoji.unemojify(msg.text);
+	// str = str.replace(':inbox_tray:','');
+	// bot.sendMessage(msg.from.id,str);
 	checkCommand(Main,msg);
 });
 
@@ -440,26 +445,27 @@ function checkout(msg)
 
 function getCart(msg,is_callback)
 {
+	var keys = [[emoji.get('back') + "Главное меню" , emoji.get('arrows_clockwise') + "Очистить корзину"]];
 	var str = "<b>Список продуктов в корзинке:</b>\n";
 	var sql = "SELECT quantity,price_id,product_id,(select product_name from sp_product p where p.product_id=t.product_id) as product FROM `sp_transactions` t WHERE state_id = 1 and client_id =" + msg.from.id;
 	con.query(sql, function (err, result) {
 		for(var i=0;i<result.length;i++)
 		{
 			str = str + "<i>" + (i+1) + ") " + result[i].product + "\n" + result[i].quantity + "x" + result[i].price_id + "=" + result[i].quantity*result[i].price_id + " Сум</i>\n";
+			keys.push([emoji.get('x') + " " + result[i].product]);
 		}
 	});
 	var sql = "SELECT sum(price_id*quantity) as sum FROM `sp_transactions` WHERE state_id = 1 and client_id =" + msg.from.id;
 	con.query(sql, function (err, result) {
 		str = str + "Общая сумма: " + result[0].sum + " Сум\n";
 		if(result[0].sum !== null)
-		{
-			replyMarkup = bot.inlineKeyboard([
-			[
-				bot.inlineButton(emoji.get('sunglasses') + 'Оформить', {callback: 'Offer'})
-			]
-			]);			
+		{			
 			var [parseMode,replyMarkup] = ['HTML',replyMarkup];
-			bot.sendMessage(msg.from.id,str,{parseMode,replyMarkup});
+			keys.push([emoji.get('sunglasses') + 'Оформить']);
+			var replyMarkup = bot.keyboard(
+				keys,
+			{resize: true});
+			bot.sendMessage(msg.from.id, str,{parseMode,replyMarkup});
 		}
 		else
 		{
