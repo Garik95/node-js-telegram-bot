@@ -110,13 +110,31 @@ bot.on('preShippingQuery',(msg)=>{
 });
 
 bot.on('text',(msg) => {
-	// console.log(emoji.get('coffee'));
-	// if(emoji.hasEmoji('pizza')){ console.log("Has!");}
-	// var str = emoji.unemojify(msg.text);
-	// str = str.replace(':inbox_tray:','');
-	// bot.sendMessage(msg.from.id,str);
-	checkCommand(Main,msg);
+	var str = emoji.unemojify(msg.text);
+	if(str.indexOf(':x:') > -1)
+		{	rmFromCart(msg);	}
+		else if(str.indexOf(':arrows_clockwise:') > -1)
+			{	emptyCart(msg);	}
+			else {	checkCommand(Main,msg);	}
 });
+
+function emptyCart(msg){
+	var txt = mysql.escape(emojiStrip(msg.text));
+	console.log(txt);
+	var sql = "delete FROM sp_transactions where state_id =1 and client_id =" + msg.from.id;
+	con.query(sql, function (err, result, fields) {
+		getCart(msg,false);
+	});
+}
+
+function rmFromCart(msg){
+	var txt = mysql.escape(emojiStrip(msg.text));
+	var sql = "delete FROM sp_transactions where state_id =1 and product_id=(SELECT product_id FROM sp_product where product_name = "+txt+") and client_id ="+msg.from.id;
+	con.query(sql, function (err, result, fields) {
+		getCart(msg,false);
+	});
+	
+}
 
 function onOfferClick(msg)
 {
@@ -452,25 +470,28 @@ function getCart(msg,is_callback)
 		for(var i=0;i<result.length;i++)
 		{
 			str = str + "<i>" + (i+1) + ") " + result[i].product + "\n" + result[i].quantity + "x" + result[i].price_id + "=" + result[i].quantity*result[i].price_id + " Сум</i>\n";
-			keys.push([emoji.get('x') + " " + result[i].product]);
+			keys.push([emoji.get('x') + result[i].product]);
 		}
-	});
-	var sql = "SELECT sum(price_id*quantity) as sum FROM `sp_transactions` WHERE state_id = 1 and client_id =" + msg.from.id;
-	con.query(sql, function (err, result) {
-		str = str + "Общая сумма: " + result[0].sum + " Сум\n";
-		if(result[0].sum !== null)
-		{			
-			var [parseMode,replyMarkup] = ['HTML',replyMarkup];
-			keys.push([emoji.get('sunglasses') + 'Оформить']);
-			var replyMarkup = bot.keyboard(
-				keys,
-			{resize: true});
-			bot.sendMessage(msg.from.id, str,{parseMode,replyMarkup});
-		}
-		else
-		{
-			bot.sendMessage(msg.from.id,"Ваша корзина пуста" + emoji.get('disappointed'));
-		}
+		var sql = "SELECT sum(price_id*quantity) as sum FROM `sp_transactions` WHERE state_id = 1 and client_id =" + msg.from.id;
+		con.query(sql, function (err, result) {
+			str = str + "Общая сумма: " + result[0].sum + " Сум\n";
+			if(result[0].sum !== null)
+			{			
+				var [parseMode,replyMarkup] = ['HTML',replyMarkup];
+				keys.push([emoji.get('sunglasses') + 'Оформить']);
+				var replyMarkup = bot.keyboard(
+					keys,
+				{resize: true});
+				bot.sendMessage(msg.from.id, str,{parseMode,replyMarkup});
+			}
+			else
+			{
+				let replyMarkup = bot.keyboard([
+					['Главное меню'],
+				], {resize: true});
+				bot.sendMessage(msg.from.id, "Ваша корзина пуста" + emoji.get('disappointed'), {replyMarkup});
+			}
+		});
 	});
 	if(is_callback == true) {	return bot.answerCallbackQuery(msg.id); }
 
