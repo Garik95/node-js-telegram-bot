@@ -185,14 +185,15 @@ function getProducts(msg)
 	var t = mysql.escape(emojiStrip(msg.text));
 	var sql = 'SELECT (SELECT NAME FROM ymd_categories where id = y.parent_id) AS pr,y.name FROM `ymd_categories` y WHERE name = '+t;
 	con.query(sql, function (err, result, fields) {
-
-		if(result[0].pr === "Акции")
-			{
-				onOfferClick(msg);
+		if(result[0]){
+			if(result[0].pr === "Акции")
+				{
+					onOfferClick(msg);
+				}
+			else {
+			getProductList(buildProductReplyMarkup);
 			}
-		else {
-		getProductList(buildProductReplyMarkup);
-		}
+		}else {	bot.sendMessage(msg.from.id, "AWWWWW! Can not recognize your command!");}
 	});
 	
 }
